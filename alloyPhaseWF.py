@@ -43,11 +43,15 @@ def main():
 
   vasp_relax_path = os.path.join(vasp_path, 'relax')
   relaxset = MPRelaxSet(struc, force_gamma=True,
-      user_incar_settings={"ISMEAR": 1, "SIGMA": 0.2, "NPAR": 4, "NSW": 80})
+      user_incar_settings={"ISMEAR": 0, "SIGMA": 0.05, "NPAR": 4, "NSW": 60,
+                           "ISPIN": 1, "LREAL": ".FALSE.", "PREC": "NORMAL",
+                           "KSPACING": 0.4, "EDIFF": 0.0001, "ENCUT": 350})
   relaxset.write_input(vasp_relax_path)
   os.chdir(vasp_relax_path)
+  kfile = os.path.join(vasp_relax_path, "KPOINTS")
+  os.remove(kfile)
   subprocess.call("mpirun -np 20 vasp5.4.1-std", shell=True)
-  time.sleep(30)
+  time.sleep(10)
 
   # Extract the output information
   vasprun_relax = os.path.join(vasp_relax_path, 'vasprun.xml')
@@ -79,11 +83,15 @@ def main():
   vasp_static_path = os.path.join(vasp_path, 'static')
   stru_static = out_relax.final_structure
   staticset = MPStaticSet(struc, force_gamma=True,                                            
-      user_incar_settings={"ICHARG": 2, "NPAR": 4, "NELM": 40})                                  
+      user_incar_settings={"ICHARG": 2, "NPAR": 4, "NELM": 40, "LREAL": ".FALSE.", 
+                           "ISPIN": 1, "KSPACING":0.4, "EDIFF": 0.0001,
+                           "ENCUT": 350, "ISMEAR": 0, "SIGMA": 0.05})                                  
   staticset.write_input(vasp_static_path)
   os.chdir(vasp_static_path)
+  kfile = os.path.join(vasp_static_path, "KPOINTS")
+  os.remove(kfile)
   subprocess.call("mpirun -np 20 vasp5.4.1-std", shell=True)
-  time.sleep(30)
+  time.sleep(10)
   
   vasprun_static = os.path.join(vasp_static_path, 'vasprun.xml')
   out_static = Vasprun(vasprun_static)
