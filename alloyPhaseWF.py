@@ -50,7 +50,7 @@ def main():
   os.chdir(vasp_relax_path)
   kfile = os.path.join(vasp_relax_path, "KPOINTS")
   os.remove(kfile)
-  subprocess.call("mpirun -np 20 vasp5.4.1-std", shell=True)
+  subprocess.call("yhrun -p paratera vasp_std", shell=True)
   time.sleep(10)
 
   # Extract the output information
@@ -90,7 +90,7 @@ def main():
   os.chdir(vasp_static_path)
   kfile = os.path.join(vasp_static_path, "KPOINTS")
   os.remove(kfile)
-  subprocess.call("mpirun -np 20 vasp5.4.1-std", shell=True)
+  subprocess.call("yhrun -p paratera vasp_std", shell=True)
   time.sleep(10)
   
   vasprun_static = os.path.join(vasp_static_path, 'vasprun.xml')
