@@ -1,0 +1,17 @@
+#!/bin/bash     
+#$ -S /bin/sh
+#$ -cwd            
+#$ -V            
+#$ -N out
+#$ -pe orte 10
+#$ -j y 
+
+source activate ababe-py3
+
+FILES="$(find ./stru/ -type f)"
+for file in $FILES 
+do
+  echo $file
+  /home/jsy/jsy/Lab/scripts/alloyPhaseWF.py -s $file -c comment.out > log 
+done
+

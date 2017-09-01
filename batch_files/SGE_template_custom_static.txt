@@ -1,0 +1,10 @@
+#!/bin/bash     
+#$ -S /bin/sh
+#$ -cwd            
+#$ -V            
+#$ -N out
+#$ -pe orte 10
+#$ -j y 
+
+source activate ababe-py3
+/home/jsy/jsy/Lab/scripts/static_only.py -s ./POSCAR_
