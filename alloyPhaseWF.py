@@ -45,7 +45,10 @@ def main():
   relaxset = MPRelaxSet(struc, force_gamma=True,
       user_incar_settings={"ISMEAR": 0, "SIGMA": 0.05, "NPAR": 4, "NSW": 60,
                            "ISPIN": 1, "LREAL": ".FALSE.", "PREC": "NORMAL",
-                           "KSPACING": 0.4, "EDIFF": 0.0001, "ENCUT": 350})
+                           "KSPACING": 0.4, "EDIFF": 0.0001, "ENCUT": 300})
+  relaxset.config_dict['POTCAR']['Cu'] = 'Cu'
+  relaxset.config_dict['POTCAR']['Ti'] = 'Ti'
+  relaxset.config_dict['POTCAR']['V'] = 'V'
   relaxset.write_input(vasp_relax_path)
   os.chdir(vasp_relax_path)
   kfile = os.path.join(vasp_relax_path, "KPOINTS")
@@ -82,11 +85,14 @@ def main():
   ###########################################
   vasp_static_path = os.path.join(vasp_path, 'static')
   stru_static = out_relax.final_structure
-  staticset = MPStaticSet(struc, force_gamma=True,                                            
+  staticset = MPStaticSet(struc_static, force_gamma=True,                                            
       user_incar_settings={"ICHARG": 2, "NPAR": 4, "NELM": 40, "LREAL": ".FALSE.", 
                            "ISPIN": 1, "KSPACING":0.4, "EDIFF": 0.0001,
                            "ENCUT": 350, "ISMEAR": 0, "SIGMA": 0.05})                                  
   staticset.write_input(vasp_static_path)
+  staticset.config_dict['POTCAR']['Cu'] = 'Cu'
+  staticset.config_dict['POTCAR']['Ti'] = 'Ti'
+  staticset.config_dict['POTCAR']['V'] = 'V'
   os.chdir(vasp_static_path)
   kfile = os.path.join(vasp_static_path, "KPOINTS")
   os.remove(kfile)
