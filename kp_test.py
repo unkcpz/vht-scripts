@@ -15,12 +15,11 @@ def main():
                       help='POSCAR file of the structure.')
   args = parser.parse_args()
 
-  struc = Structure.from_file(args.structure)
+  stru = Structure.from_file(args.structure)
   # Prepare the vasp working directory
   working_path = os.getcwd()
 
-  l_kp = [0.5, 0.4, 0.25, 0.2, 0.1]
-  # l_kp = range(200, 1000, 100)
+  l_kp = range(20, 100, 10)
   toten = []
   for kp in l_kp:
     vasp_path = os.path.join(working_path, 'vasp_tmp')
@@ -30,15 +29,18 @@ def main():
       shutil.rmtree(vasp_path)
       os.makedirs(vasp_path)
 
-    staticset = MPStaticSet(struc, force_gamma=True,
-                            user_incar_settings={"ENCUT": 600, "ISPIN": 1,
+    staticset = MPStaticSet(stru, force_gamma=True,
+                            user_incar_settings={"ENCUT": 500, "ISPIN": 1,
                                                  "LWAVE": 'FALSE', "ICHARG": 2,
-                                                 "LREAL": 'FALSE', "ISMEAR": 1,
-                                                 "SIGMA": 0.2, "KSPACING": kp}))
+                                                 "LREAL": 'FALSE', "ISMEAR":0,
+                                                 "EDIFF": 0.001, "NPAR": 5},
+                            user_kpoints_settings={"reciprocal_density": kp})
+    staticset.config_dict['POTCAR']['Cu'] = 'Cu'
+    staticset.config_dict['POTCAR']['Si'] = 'Si'
     staticset.write_input(vasp_path)
     # chdir to vasp running directory
     os.chdir(vasp_path)
-    subprocess.call("mpirun -np 20 vasp5.4.1-std", shell=True)
+    subprocess.call("mpirun -np 10 vasp5.4.1-std", shell=True)
 
     # find energy total lines and the total energy
     regex = re.compile("energy\s+without\s+entropy\s*=\s*(\S+)\s+energy\(sigma->0\)\s+=\s+(\S+)")

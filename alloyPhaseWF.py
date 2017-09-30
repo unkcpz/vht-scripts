@@ -19,7 +19,9 @@ def main():
                       help='File name of comment')
   args = parser.parse_args()
 
-  struc = Structure.from_file(args.structure)
+  stru = Structure.from_file(args.structure)
+  fn = args.structure
+  formula = stru.formula
   working_path = os.getcwd()
 
   # comment file stay in the working path and 
@@ -41,86 +43,91 @@ def main():
     shutil.rmtree(vasp_path)
     os.makedirs(vasp_path)
 
-  vasp_relax_path = os.path.join(vasp_path, 'relax')
-  relaxset = MPRelaxSet(struc, force_gamma=True,
-      user_incar_settings={"ISMEAR": 0, "SIGMA": 0.05, "NPAR": 4, "NSW": 60,
-                           "ISPIN": 1, "LREAL": ".FALSE.", "PREC": "NORMAL",
-                           "KSPACING": 0.4, "EDIFF": 0.0001, "ENCUT": 300})
-  relaxset.config_dict['POTCAR']['Cu'] = 'Cu'
-  relaxset.config_dict['POTCAR']['Ti'] = 'Ti'
-  relaxset.config_dict['POTCAR']['V'] = 'V'
-  relaxset.write_input(vasp_relax_path)
-  os.chdir(vasp_relax_path)
-  kfile = os.path.join(vasp_relax_path, "KPOINTS")
-  os.remove(kfile)
-  subprocess.call("mpirun -np 20 vasp5.4.1-std", shell=True)
-  time.sleep(10)
+  try:
+    ###########################################
+    # RUNING ION RELAXED
+    ###########################################
+    vasp_relax_path = os.path.join(vasp_path, 'relax')
+    relaxset = MPRelaxSet(stru, force_gamma=True,
+        user_incar_settings={"ISMEAR": 0, "SIGMA": 0.2, "NPAR": 5, "NSW": 20,
+                             "ISPIN": 1, "LREAL": ".FALSE.", "PREC": "NORMAL",
+                             "EDIFF": 0.0001, "ENCUT": 400, "ISYM": 0, "NELM": 60,
+                             "LCHARG": ".FALSE.", "LAECHG": ".FALSE.", 
+                             "ALGO": "ALL"},
+        user_kpoints_settings={"reciprocal_density": 64})
+    relaxset.config_dict['POTCAR']['Cu'] = 'Cu'
+    relaxset.config_dict['POTCAR']['Si'] = 'Si'
+    relaxset.write_input(vasp_relax_path)
+    os.chdir(vasp_relax_path)
+    subprocess.call("mpirun -np 10 vasp5.4.1-std", shell=True)
+    time.sleep(10)
 
-  # Extract the output information
-  vasprun_relax = os.path.join(vasp_relax_path, 'vasprun.xml')
-  out_relax = Vasprun(vasprun_relax)
+    # Extract the output information
+    vasprun_relax = os.path.join(vasp_relax_path, 'vasprun.xml')
+    out_relax = Vasprun(vasprun_relax)
+    ion_conv = out_relax.converged_ionic
+    # if not converged also put energy
+    energy = out_relax.final_energy
 
-  # RECORD THE INPUT FILE AND IS IONIC CONVERGED
-  fn = args.structure
-  ion_conv = out_relax.converged_ionic
-  # if not converged also put energy
-  energy = out_relax.final_energy
-
-  print("fn is {0:}, ion_conv is {1:}".format(fn, ion_conv))
-
-  ###########################################
-  # Done: add all files to compress
-  ###########################################
-  f_list = os.listdir(vasp_relax_path)
-  for f in f_list:
-    fname = os.path.join(vasp_relax_path, f)
-    with open(fname, 'rb') as f_in:
-      with gzip.open("{}{}".format(fname, '.relax.gz'), 'wb') as f_out:
-        shutil.copyfileobj(f_in, f_out)
-        os.remove(fname)
+    ###########################################
+    # Done: add all files to compress
+    ###########################################
+    f_list = os.listdir(vasp_relax_path)
+    for f in f_list:
+      fname = os.path.join(vasp_relax_path, f)
+      with open(fname, 'rb') as f_in:
+        with gzip.open("{}{}".format(fname, '.relax.gz'), 'wb') as f_out:
+          shutil.copyfileobj(f_in, f_out)
+          os.remove(fname)
+  except:
+    ion_conv = "ERROR"
+    energy = "ERROR"
   
 
-  ###########################################
-  # CALCULATING THE STATIC ENERGY
-  ###########################################
-  vasp_static_path = os.path.join(vasp_path, 'static')
-  stru_static = out_relax.final_structure
-  staticset = MPStaticSet(struc_static, force_gamma=True,                                            
-      user_incar_settings={"ICHARG": 2, "NPAR": 4, "NELM": 40, "LREAL": ".FALSE.", 
-                           "ISPIN": 1, "KSPACING":0.4, "EDIFF": 0.0001,
-                           "ENCUT": 350, "ISMEAR": 0, "SIGMA": 0.05})                                  
-  staticset.write_input(vasp_static_path)
-  staticset.config_dict['POTCAR']['Cu'] = 'Cu'
-  staticset.config_dict['POTCAR']['Ti'] = 'Ti'
-  staticset.config_dict['POTCAR']['V'] = 'V'
-  os.chdir(vasp_static_path)
-  kfile = os.path.join(vasp_static_path, "KPOINTS")
-  os.remove(kfile)
-  subprocess.call("mpirun -np 20 vasp5.4.1-std", shell=True)
-  time.sleep(10)
-  
-  vasprun_static = os.path.join(vasp_static_path, 'vasprun.xml')
-  out_static = Vasprun(vasprun_static)
+  try:
+    ###########################################
+    # CALCULATING THE STATIC ENERGY
+    ###########################################
+    vasp_static_path = os.path.join(vasp_path, 'static')
+    stru_static = out_relax.final_structure
 
-  formula = out_static.final_structure.formula
-  elec_conv = out_static.converged_electronic
-  energy = out_static.final_energy
- 
+    staticset = MPStaticSet(stru_static, force_gamma=True,                                            
+        user_incar_settings={"ICHARG": 2, "NPAR": 5, "NELM": 40, "LREAL": ".FALSE.", 
+                             "ISPIN": 1, "EDIFF": 0.0001,
+                             "ENCUT": 400, "ISMEAR": 0, "SIGMA": 0.2,
+          		               "LCHARG": ".FALSE.", "LAECHG": ".FALSE.",
+                             "ISYM": 0},                                  
+        user_kpoints_settings={"reciprocal_density": 64})
+    staticset.config_dict['POTCAR']['Cu'] = 'Cu'
+    staticset.config_dict['POTCAR']['Si'] = 'Si'
+    staticset.write_input(vasp_static_path)
+    os.chdir(vasp_static_path)
+    subprocess.call("mpirun -np 10 vasp5.4.1-std", shell=True)
+    time.sleep(10)
+    
+    vasprun_static = os.path.join(vasp_static_path, 'vasprun.xml')
+    out_static = Vasprun(vasprun_static)
+    elec_conv = out_static.converged_electronic
+    energy = out_static.final_energy
+
+    ###########################################
+    # Done: add all files to compress
+    ###########################################
+    f_list = os.listdir(vasp_static_path)
+    for f in f_list:
+      fname = os.path.join(vasp_static_path, f)
+      with open(fname, 'rb') as f_in:
+        with gzip.open("{}{}".format(fname, '.static.gz'), 'wb') as f_out:
+          shutil.copyfileobj(f_in, f_out)
+          os.remove(fname)
+  except:
+    elec_conv = "ERROR"
+    energy = "ERROR"
+
+
   with open(comment_file, 'a') as f:
-    f.write("{0:}, {1:}, {2:}, {3:}, {4:5f}, {5:}\n".format(fn, formula, ion_conv,
+    f.write("{0:}, {1:}, {2:}, {3:}, {4:}, {5:}\n".format(fn, formula, ion_conv,
                                                             elec_conv, energy, vasp_path))
-
-  ###########################################
-  # Done: add all files to compress
-  ###########################################
-  f_list = os.listdir(vasp_static_path)
-  for f in f_list:
-    fname = os.path.join(vasp_static_path, f)
-    with open(fname, 'rb') as f_in:
-      with gzip.open("{}{}".format(fname, '.static.gz'), 'wb') as f_out:
-        shutil.copyfileobj(f_in, f_out)
-        os.remove(fname)
-
 
 if __name__ == "__main__":
   main()
